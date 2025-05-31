@@ -1,80 +1,60 @@
-import React, { useState, useEffect } from "react";
-import { Box, Paper, Tabs, Tab } from "@mui/material";
-import Sequences, { Sequence } from "./Sequences";
-import { io } from "socket.io-client";
+import React, { useState, useEffect } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import Sequences from './Sequences'; // Keep this import
+import { io } from 'socket.io-client';
+import { Task, Sequence } from '../types'; // Import from centralized types
 
-const socket = io("http://localhost:5000"); // ✅ Connect to the backend
-
-export interface Task {
-  id: number;
-  description: string;
-  email_subject?: string;
-  email_body?: string;
-  content?: string; // ✅ This might hold the actual message
-  message?: {
-    subject: string;
-    body: string;
-  };
-  sequence?: {   // ✅ Add this to match the backend response
-    subject: string;
-    body: string;
-  };
-}
+const socket = io('http://localhost:5000');
 
 interface WorkspaceProps {
   tasks: Task[];
 }
 
 const Workspace: React.FC<WorkspaceProps> = ({ tasks }) => {
-  const [currentTab, setCurrentTab] = useState<number>(0);
+  const [currentTab, setCurrentTab] = useState<string>("sequences");
   const [sequences, setSequences] = useState<Sequence[]>([]);
 
-  // ✅ Ensure AI-generated sequences update properly
   useEffect(() => {
-    if (tasks.length > 0) {
+    if (tasks && tasks.length > 0) {
       const convertedSequences: Sequence[] = tasks.map((task) => ({
         id: task.id,
-        title: task.description, 
+        title: task.description,
         message: {
-          subject: task.message?.subject || "Generated Outreach Email", 
-          body: task.message?.body || "No Content Provided", 
+          subject: task.message?.subject || task.email_subject || 'Generated Outreach Email',
+          body: task.message?.body || task.email_body || 'No Content Provided',
         },
       }));
-  
-      console.log("🚀 Updating sequences:", convertedSequences);
       setSequences(convertedSequences);
+    } else {
+      setSequences([]);
     }
   }, [tasks]);
-  
 
-  // ✅ Listen for AI-generated workspace updates from the backend
   useEffect(() => {
     const handleSocketUpdate = (updatedWorkspace: { tasks: Task[] }) => {
-      console.log("🔄 Received workspace update:", updatedWorkspace);
-
+      console.log('🔄 Received workspace update:', updatedWorkspace);
       if (updatedWorkspace.tasks) {
         setSequences(
           updatedWorkspace.tasks.map((task) => ({
             id: task.id,
             title: task.description,
             message: {
-              subject: task.email_subject || "Generated Outreach Email",
-              body: task.message?.body || "No Content Provided",
+              subject: task.email_subject || task.message?.subject || 'Generated Outreach Email',
+              body: task.email_body || task.message?.body || 'No Content Provided',
             },
           }))
         );
       }
     };
-
-    socket.on("update_workspace", handleSocketUpdate); // ✅ Listen for real-time AI updates
-
+    socket.on('workspace_update', handleSocketUpdate);
     return () => {
-      socket.off("update_workspace", handleSocketUpdate); // ✅ Cleanup socket listener
+      socket.off('workspace_update', handleSocketUpdate);
     };
   }, []);
 
   const handleExecuteSequence = (id: number) => {
     console.log(`Executing sequence ${id}`);
+    // Placeholder for actual execution logic
   };
 
   const handleUpdateSequence = (id: number, newMessage: { subject: string; body: string }) => {
@@ -90,22 +70,23 @@ const Workspace: React.FC<WorkspaceProps> = ({ tasks }) => {
   };
 
   return (
-    <Paper sx={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", p: 2 }}>
-      <Tabs value={currentTab} onChange={(_e, newValue) => setCurrentTab(newValue)} variant="scrollable">
-        <Tab label="Sequences" />
-      </Tabs>
-
-      <Box sx={{ flex: 1, overflowY: "auto" }}>
-        {currentTab === 0 && (
+    <div className="flex flex-col h-full rounded-lg border bg-card text-card-foreground shadow-md p-4 md:p-6 overflow-hidden">
+      <Tabs value={currentTab} onValueChange={setCurrentTab} defaultValue="sequences" className="flex flex-col flex-1 h-full overflow-hidden">
+        <TabsList className="mb-4 w-full sm:w-auto self-start">
+          <TabsTrigger value="sequences">Sequences</TabsTrigger>
+          {/* Add more TabsTriggers here if new tabs are introduced */}
+        </TabsList>
+        <TabsContent value="sequences" className="flex-1 overflow-y-auto">
           <Sequences
             sequences={sequences}
             onDeleteSequence={handleDeleteSequence}
             onExecuteSequence={handleExecuteSequence}
             onUpdateSequence={handleUpdateSequence}
           />
-        )}
-      </Box>
-    </Paper>
+        </TabsContent>
+        {/* Add more TabsContent here */}
+      </Tabs>
+    </div>
   );
 };
 
