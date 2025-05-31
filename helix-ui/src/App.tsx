@@ -3,17 +3,8 @@ import { io, Socket } from "socket.io-client";
 import ChatBar from "./components/chatBar";
 import Workspace from "./components/Workspace";
 import Header from "./components/Header";
-import { Box, createTheme, ThemeProvider } from "@mui/material";
-
-interface ChatMessage {
-  sender: string;
-  text: string;
-}
-
-export interface Task {
-  id: number;
-  description: string;
-}
+import { ThemeProvider } from "./components/theme-provider";
+import { ChatMessage, Task } from "./types"; // Import from types.ts
 
 interface WorkspacePayload {
   tasks: Task[];
@@ -28,75 +19,8 @@ const socket: Socket = io("http://localhost:5000", {
   reconnectionDelayMax: 5000,
 });
 
-// 1. Define Light Glass Theme
-const lightTheme = createTheme({
-  palette: {
-    mode: "light",
-    primary: {
-      main: "#2196F3",
-    },
-    secondary: {
-      main: "#607D8B",
-    },
-    error: {
-      main: "#F44336",
-    },
-    success: {
-      main: "#4CAF50",
-    },
-    background: {
-      default: "#F5F7FA", // outer background
-      paper: "#FFFFFF",    // MUI “paper” background
-    },
-    text: {
-      primary: "rgba(0, 0, 0, 0.87)",
-      secondary: "rgba(0, 0, 0, 0.6)",
-    },
-  },
-  shape: {
-    borderRadius: 8, // global corner radius
-  },
-});
-
-// 2. Define Dark Glass Theme
-const darkTheme = createTheme({
-  palette: {
-    mode: "dark",
-    primary: {
-      main: "#64B5F6",
-    },
-    secondary: {
-      main: "#90A4AE",
-    },
-    error: {
-      main: "#E57373",
-    },
-    success: {
-      main: "#81C784",
-    },
-    background: {
-      default: "#121212", // outer background
-      paper: "#1E1E1E",    // MUI “paper” background
-    },
-    text: {
-      primary: "#FFFFFF",
-      secondary: "rgba(255, 255, 255, 0.7)",
-    },
-  },
-  shape: {
-    borderRadius: 8,
-  },
-});
-
 const App: React.FC = () => {
-  // 3. Manage theme toggle state
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  const handleToggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
-  // 4. Socket + Chat + Workspace Logic
+  // Socket + Chat + Workspace Logic
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [workspaceTasks, setWorkspaceTasks] = useState<Task[]>([]);
 
@@ -137,55 +61,19 @@ const App: React.FC = () => {
     socket.emit("user_message", message);
   };
 
-  
-
   return (
-    // 5. Wrap everything in ThemeProvider
-    <ThemeProvider theme={isDarkMode ? darkTheme : lightTheme}>
-      <Box
-        sx={{
-          // Outer background
-          bgcolor: "background.default",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          p: { xs: 1, md: 2 },
-          boxSizing: "border-box",
-        }}
-      >
-        {/* Header with theme toggle */}
-        <Header onToggleTheme={handleToggleTheme} isDarkMode={isDarkMode} />
-
-        {/* Main content: Chat + Workspace */}
-        <Box
-          sx={{
-            display: "flex",
-            flex: 1,
-            borderRadius: 0.5,
-            overflow: "hidden",
-            mt: { xs: 1, md: 2 },
-            gap: { xs: 1, md: 2 },
-          }}
-        >
-          {/* Left: Chat panel */}
-          <Box
-            sx={{
-              width: { xs: "100%", md: "45%" },
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              borderRadius: 1,
-            }}
-          >
+    <ThemeProvider defaultTheme="dark" storageKey="helix-ui-theme">
+      <div className="bg-background text-foreground min-h-screen flex flex-col p-4 md:p-6">
+        <Header /> {/* Props removed for now */}
+        <div className="flex flex-1 overflow-hidden mt-4 md:mt-6 gap-4 md:gap-6">
+          <div className="w-full md:w-[45%] flex flex-col overflow-hidden rounded-lg">
             <ChatBar messages={chatMessages} onSend={sendMessage} />
-          </Box>
-
-          {/* Right: Workspace panel */}
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column",overflow: "hidden", borderRadius: 0.5 }}>  
-            <Workspace tasks={workspaceTasks}  />
-          </Box>
-        </Box>
-      </Box>
+          </div>
+          <div className="flex-1 flex flex-col overflow-hidden rounded-lg">
+            <Workspace tasks={workspaceTasks} />
+          </div>
+        </div>
+      </div>
     </ThemeProvider>
   );
 };
